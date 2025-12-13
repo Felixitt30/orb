@@ -2,12 +2,21 @@ import { useStore } from '../store'
 import { useEffect, useState } from 'react'
 
 export function UI() {
-    const { theme, setTheme, background, setBackground, isDarkMode, toggleDarkMode, totalValue, ath, currentGoalIndex, goals } = useStore()
+    const { theme, setTheme, isDarkMode, toggleDarkMode, totalValue, currentGoalIndex, goals } = useStore()
 
     return (
         <div style={{ pointerEvents: 'none', position: 'absolute', inset: 0, overflow: 'hidden' }}>
             {/* Header / Theme Controls */}
-            <div style={{ pointerEvents: 'auto', position: 'absolute', top: 20, right: 20, display: 'flex', gap: 10 }}>
+            <div style={{
+                pointerEvents: 'auto',
+                position: 'absolute',
+                top: 'calc(var(--safe-area-top, 0px) + 20px)',
+                right: 'calc(var(--safe-area-right, 0px) + 20px)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+                alignItems: 'flex-end'
+            }}>
                 <select
                     value={theme}
                     onChange={(e) => setTheme(e.target.value)}
@@ -30,22 +39,71 @@ export function UI() {
 
                 <button
                     onClick={toggleDarkMode}
-                    style={{ padding: '5px 10px', borderRadius: 5, background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid #444', cursor: 'pointer' }}
+                    style={{
+                        padding: '5px 10px',
+                        borderRadius: 5,
+                        background: 'rgba(255,255,255,0.1)',
+                        color: '#fff',
+                        border: '1px solid #444',
+                        cursor: 'pointer'
+                    }}
                 >
                     {isDarkMode ? '🌙' : '☀️'}
                 </button>
 
+                {/* SOUND TOGGLE - More Visible */}
+                <label
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        color: '#fff',
+                        fontSize: 14,
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        background: 'rgba(0,0,0,0.7)',
+                        padding: '8px 12px',
+                        borderRadius: 5,
+                        border: '2px solid #666',
+                        userSelect: 'none'
+                    }}
+                >
+                    <input
+                        type="checkbox"
+                        checked={localStorage.getItem('orbSoundEnabled') === 'true'}
+                        onChange={(e) => {
+                            localStorage.setItem('orbSoundEnabled', e.target.checked)
+                            // Reload page to apply audio blocking changes
+                            window.location.reload()
+                        }}
+                        style={{
+                            width: 16,
+                            height: 16,
+                            cursor: 'pointer'
+                        }}
+                    />
+                    <span>Sound {localStorage.getItem('orbSoundEnabled') === 'true' ? '🔊' : '🔇'}</span>
+                </label>
+
                 <a
-                    href="https://vercel.com/new" // Placeholder for "Deploy"
+                    href="https://vercel.com/new"
                     target="_blank"
-                    style={{ padding: '5px 15px', borderRadius: 5, background: '#fff', color: '#000', textDecoration: 'none', fontWeight: 'bold' }}
+                    rel="noopener noreferrer"
+                    style={{
+                        padding: '5px 15px',
+                        borderRadius: 5,
+                        background: '#fff',
+                        color: '#000',
+                        textDecoration: 'none',
+                        fontWeight: 'bold'
+                    }}
                 >
                     Deploy
                 </a>
             </div>
 
             {/* Net Worth Goal Progress (Top Center) */}
-            <div style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', textAlign: 'center', opacity: 0.8 }}>
+            <div style={{ position: 'absolute', top: 'calc(var(--safe-area-top, 0px) + 30px)', left: '50%', transform: 'translateX(-50%)', textAlign: 'center', opacity: 0.8 }}>
                 <div style={{ fontSize: 10, color: '#888', letterSpacing: 2 }}>NEXT GOAL</div>
                 <div style={{ fontSize: 18, color: '#fff', fontWeight: 'bold' }}>${goals[currentGoalIndex].toLocaleString()}</div>
                 <div style={{ width: 200, height: 4, background: '#333', marginTop: 5, borderRadius: 2 }}>
@@ -61,15 +119,6 @@ export function UI() {
 
             {/* Order Book Visualizer (Right Side) */}
             <OrderBook />
-
-            {/* Bottom Ticker is handled in App.jsx currently, but we can move it later if we want */}
-
-            {/* Mobile Styles Injection */}
-            <style>{`
-        @media (max-width: 600px) {
-            .order-book { display: none; }
-        }
-      `}</style>
         </div>
     )
 }
@@ -77,10 +126,21 @@ export function UI() {
 function OrderBook() {
     // Simulated Order Book
     const [orders, setOrders] = useState([])
+    const [isMobile, setIsMobile] = useState(false)
 
     useEffect(() => {
+        // Check if mobile
+        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
+    useEffect(() => {
+        if (isMobile) return // Don't generate orders on mobile
+
         const generate = () => {
-            const newOrders = Array.from({ length: 15 }).map((_, i) => ({
+            const newOrders = Array.from({ length: 15 }).map(() => ({
                 price: 90000 + (Math.random() * 1000 - 500),
                 size: Math.random() * 2,
                 type: Math.random() > 0.5 ? 'ask' : 'bid'
@@ -90,7 +150,10 @@ function OrderBook() {
         generate()
         const id = setInterval(generate, 1000)
         return () => clearInterval(id)
-    }, [])
+    }, [isMobile])
+
+    // Hide on mobile devices
+    if (isMobile) return null
 
     return (
         <div className="order-book" style={{
