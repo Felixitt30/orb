@@ -171,11 +171,20 @@ export default function PortfolioUI() {
         .map(([key, qty]) => {
             // Use helper function to get price data with proper normalization
             const priceData = getTokenPriceData(key)
-            const price = priceData.usd || 0
-            const value = price * qty
-            return { key, qty, price, value, change: priceData.usd_24h_change || 0 }
+
+            // Use null for missing prices (not 0) so UI can distinguish
+            const price = typeof priceData.usd === 'number' ? priceData.usd : null
+            const value = price !== null ? price * qty : null
+
+            return {
+                key,
+                qty,
+                price,
+                value,
+                change: priceData.usd_24h_change ?? null
+            }
         })
-        .sort((a, b) => b.value - a.value)
+        .sort((a, b) => (b.value ?? 0) - (a.value ?? 0))
 
     if (isClosed) {
         return (
@@ -339,9 +348,9 @@ export default function PortfolioUI() {
                                 ) : (
                                     <>
                                         <span style={{ fontSize: 11, color: '#888', fontFamily: 'monospace' }}>
-                                            {price > 0 ? formatPrice(price) : '—'}
+                                            {price !== null ? formatPrice(price) : '—'}
                                         </span>
-                                        {price > 0 && change !== 0 && (
+                                        {price !== null && change !== null && change !== 0 && (
                                             <span style={{ fontSize: 10, color: changeColor, fontWeight: 600 }}>
                                                 {change > 0 ? '+' : ''}{change.toFixed(1)}%
                                             </span>
@@ -366,10 +375,10 @@ export default function PortfolioUI() {
                                     <span style={{
                                         fontSize: 16,
                                         fontWeight: 700,
-                                        color: price > 0 ? '#fff' : '#666',
+                                        color: value !== null ? '#fff' : '#666',
                                         fontFamily: 'monospace'
                                     }}>
-                                        {price > 0 ? formatValue(value) : '—'}
+                                        {value !== null ? formatValue(value) : '—'}
                                     </span>
                                 )}
 
