@@ -103,6 +103,9 @@ export default function MusicPlayer() {
         window.open(service.url, '_blank', 'noopener,noreferrer')
     }
 
+    // Detect iOS for performance optimizations
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+
     return (
     <>
             {/* 🔑 AUDIO ELEMENT (RADIO ONLY) */}
@@ -136,12 +139,17 @@ export default function MusicPlayer() {
                         position: 'fixed',
                         bottom: 140,
                         left: 20,
-                        width: 340,
-                        background: '#111',
+                        width: 'calc(100vw - 40px)',
+                        maxWidth: 360,
+                        maxHeight: '70vh',
+                        overflowY: 'auto',
+                        background: isIOS ? '#111' : 'linear-gradient(145deg, rgba(24,24,24,0.98), rgba(18,18,18,0.98))',
                         padding: 16,
+                        paddingBottom: isIOS ? 'calc(env(safe-area-inset-bottom) + 16px)' : 16,
                         borderRadius: 14,
                         color: '#fff',
-                        zIndex: 999
+                        zIndex: 999,
+                        transition: isIOS ? 'none' : 'all 0.3s ease'
                     }}
                 >
                     {/* Now Playing */}
