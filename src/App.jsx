@@ -14,6 +14,8 @@ import LoginPage from './components/LoginPage'
 import Onboarding from './components/Onboarding'
 import DataSyncLoader from './components/DataSyncLoader'
 import EmptyState from './components/EmptyState'
+import PortfolioPulse from './components/PortfolioPulse'
+import SessionTracker from './components/SessionTracker'
 import { useStore } from './store'
 
 function OrbModel({ isMobile }) {
@@ -319,6 +321,12 @@ function App() {
 
         {/* Settings Panel */}
         <Settings />
+
+        {/* Portfolio Pulse - Live engagement ring */}
+        <PortfolioPulse />
+
+        {/* Session Tracker - Engagement metrics */}
+        <SessionTracker />
       </div>
     </>
   )

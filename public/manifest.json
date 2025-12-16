@@ -1,7 +1,7 @@
 {
-    "name": "Orb",
-    "short_name": "Orb",
-    "description": "Orb - Your personal dashboard",
+    "name": "ORB",
+    "short_name": "ORB",
+    "description": "Your crypto portfolio, visualized",
     "start_url": "/",
     "id": "/",
     "display": "standalone",
@@ -15,6 +15,7 @@
     "scope": "/",
     "lang": "en",
     "categories": [
+        "finance",
         "productivity",
         "utilities"
     ],
