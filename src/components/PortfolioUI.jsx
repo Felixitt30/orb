@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 
 export default function PortfolioUI() {
-    const { holdings, updateHoldings, prices, inputDrafts, setInputDrafts, isInputFocused, setInputFocused, settings, fetchData, isLoadingPrices } = useStore()
+    const { holdings, updateHoldings, prices, inputDrafts, setInputDrafts, isInputFocused, setInputFocused, settings, fetchData, isLoadingPrices, getTokenPriceData } = useStore()
 
     const [isMobile, setIsMobile] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
@@ -169,7 +169,8 @@ export default function PortfolioUI() {
     // Sort holdings by total value (descending)
     const sortedHoldings = Object.entries(holdings)
         .map(([key, qty]) => {
-            const priceData = prices[key] || { usd: 0, usd_24h_change: 0 }
+            // Use helper function to get price data with proper normalization
+            const priceData = getTokenPriceData(key)
             const price = priceData.usd || 0
             const value = price * qty
             return { key, qty, price, value, change: priceData.usd_24h_change || 0 }
@@ -289,71 +290,99 @@ export default function PortfolioUI() {
                         <div
                             key={key}
                             style={{
-                                display: 'grid',
-                                gridTemplateColumns: '1fr auto auto',
-                                alignItems: 'center',
-                                gap: 12,
-                                paddingBottom: 8,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 6,
+                                paddingBottom: 12,
                                 borderBottom: '1px solid rgba(255,255,255,0.05)'
                             }}
                         >
-                            {/* Coin Info */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                                <span style={{ textTransform: 'uppercase', fontWeight: 600, fontSize: 12, color: '#fff' }}>
+                            {/* Top Row: Token Name + Remove Button */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span style={{ textTransform: 'uppercase', fontWeight: 600, fontSize: 13, color: '#fff' }}>
                                     {key}
                                 </span>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                                    {isLoadingPrices ? (
-                                        <div style={{
-                                            width: 60,
-                                            height: 10,
-                                            background: 'linear-gradient(90deg, #222 25%, #333 37%, #222 63%)',
-                                            backgroundSize: '200% 100%',
-                                            animation: 'shimmer 1.4s infinite',
-                                            borderRadius: 4
-                                        }} />
-                                    ) : (
-                                        <>
-                                            <span style={{ fontSize: 10, color: '#888', fontFamily: 'monospace' }}>
-                                                {price > 0 ? formatPrice(price) : '—'}
-                                            </span>
-                                            {price > 0 && change !== 0 && (
-                                                <span style={{ fontSize: 9, color: changeColor, fontWeight: 500 }}>
-                                                    {change > 0 ? '+' : ''}{change.toFixed(1)}%
-                                                </span>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
+                                <button
+                                    onClick={() => handleRemove(key)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 20,
+                                        height: 20,
+                                        border: 'none',
+                                        background: 'transparent',
+                                        color: '#666',
+                                        cursor: 'pointer',
+                                        fontSize: 14,
+                                        padding: 0,
+                                        opacity: 0.6
+                                    }}
+                                    onMouseEnter={(e) => { e.target.style.opacity = '1'; e.target.style.color = '#ff4444' }}
+                                    onMouseLeave={(e) => { e.target.style.opacity = '0.6'; e.target.style.color = '#666' }}
+                                >
+                                    ✕
+                                </button>
                             </div>
 
-                            {/* Quantity */}
-                            <span style={{ fontFamily: 'monospace', color: '#4ade80', fontSize: 12, textAlign: 'right', minWidth: 60 }}>
-                                {formatQty(qty)}
-                            </span>
+                            {/* Middle Row: Price + % Change */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                {isLoadingPrices ? (
+                                    <div style={{
+                                        width: 80,
+                                        height: 12,
+                                        background: 'linear-gradient(90deg, #222 25%, #333 37%, #222 63%)',
+                                        backgroundSize: '200% 100%',
+                                        animation: 'shimmer 1.4s infinite',
+                                        borderRadius: 4
+                                    }} />
+                                ) : (
+                                    <>
+                                        <span style={{ fontSize: 11, color: '#888', fontFamily: 'monospace' }}>
+                                            {price > 0 ? formatPrice(price) : '—'}
+                                        </span>
+                                        {price > 0 && change !== 0 && (
+                                            <span style={{ fontSize: 10, color: changeColor, fontWeight: 600 }}>
+                                                {change > 0 ? '+' : ''}{change.toFixed(1)}%
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+                            </div>
 
-                            {/* Remove Button */}
-                            <button
-                                onClick={() => handleRemove(key)}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: 24,
-                                    height: 24,
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#666',
-                                    cursor: 'pointer',
-                                    fontSize: 14,
-                                    padding: 0,
-                                    opacity: 0.6
-                                }}
-                                onMouseEnter={(e) => { e.target.style.opacity = '1'; e.target.style.color = '#ff4444' }}
-                                onMouseLeave={(e) => { e.target.style.opacity = '0.6'; e.target.style.color = '#666' }}
-                            >
-                                ✕
-                            </button>
+                            {/* Bottom Row: Total Value (BOLD) + Quantity */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                {/* Total Value - Most Important! */}
+                                {isLoadingPrices ? (
+                                    <div style={{
+                                        width: 100,
+                                        height: 16,
+                                        background: 'linear-gradient(90deg, #222 25%, #333 37%, #222 63%)',
+                                        backgroundSize: '200% 100%',
+                                        animation: 'shimmer 1.4s infinite',
+                                        borderRadius: 4
+                                    }} />
+                                ) : (
+                                    <span style={{
+                                        fontSize: 16,
+                                        fontWeight: 700,
+                                        color: price > 0 ? '#fff' : '#666',
+                                        fontFamily: 'monospace'
+                                    }}>
+                                        {price > 0 ? formatValue(value) : '—'}
+                                    </span>
+                                )}
+
+                                {/* Quantity - Secondary */}
+                                <span style={{
+                                    fontFamily: 'monospace',
+                                    color: '#4ade80',
+                                    fontSize: 11,
+                                    opacity: 0.8
+                                }}>
+                                    {formatQty(qty)}
+                                </span>
+                            </div>
                         </div>
                     )
                 })}
@@ -362,7 +391,7 @@ export default function PortfolioUI() {
             {/* Add/Update Form */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginTop: 8 }}>
                 <input
-                    placeholder="ID (e.g. bitcoin)"
+                    placeholder="Symbol (e.g. ATOM, BTC)"
                     value={inputDrafts?.symbol || ''}
                     onChange={(e) => setInputDrafts({ ...inputDrafts, symbol: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
@@ -422,7 +451,7 @@ export default function PortfolioUI() {
             </button>
 
             <div style={{ fontSize: 10, color: '#555', textAlign: 'center' }}>
-                Use CoinGecko IDs (e.g. 'ethereum')
+                30+ tickers supported (ATOM, ADA, DOT, etc.)
             </div>
 
             <style>{`

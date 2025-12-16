@@ -12,6 +12,44 @@ const STOCK_SYMBOLS = {
   nvidia: 'NVDA'
 }
 
+// Crypto ticker to CoinGecko ID mapping
+// Use this when the ticker symbol doesn't match the CoinGecko ID
+const CRYPTO_ID_MAP = {
+  // Common tickers that need mapping
+  'atom': 'cosmos',           // Cosmos
+  'ada': 'cardano',           // Cardano
+  'dot': 'polkadot',          // Polkadot
+  'matic': 'matic-network',   // Polygon
+  'avax': 'avalanche-2',      // Avalanche
+  'link': 'chainlink',        // Chainlink
+  'uni': 'uniswap',           // Uniswap
+  'bnb': 'binancecoin',       // Binance Coin
+  'xrp': 'ripple',            // Ripple
+  'doge': 'dogecoin',         // Dogecoin
+  'shib': 'shiba-inu',        // Shiba Inu
+  'ltc': 'litecoin',          // Litecoin
+  'trx': 'tron',              // Tron
+  'etc': 'ethereum-classic',  // Ethereum Classic
+  'xlm': 'stellar',           // Stellar
+  'algo': 'algorand',         // Algorand
+  'vet': 'vechain',           // VeChain
+  'icp': 'internet-computer', // Internet Computer
+  'fil': 'filecoin',          // Filecoin
+  'apt': 'aptos',             // Aptos
+  'arb': 'arbitrum',          // Arbitrum
+  'op': 'optimism',           // Optimism
+  'near': 'near',             // NEAR Protocol
+  'ftm': 'fantom',            // Fantom
+  'inj': 'injective-protocol',// Injective
+  'sui': 'sui',               // Sui
+  'sei': 'sei-network',       // Sei
+  'tia': 'celestia',          // Celestia
+  'btc': 'bitcoin',           // Bitcoin (alias)
+  'eth': 'ethereum',          // Ethereum (alias)
+  'sol': 'solana',            // Solana (alias)
+  // Add more as needed
+}
+
 // Default Holdings (Simulated User Portfolio - used if no saved holdings)
 const DEFAULT_HOLDINGS = {
   bitcoin: 0.5,     // 0.5 BTC
@@ -480,6 +518,20 @@ export const useStore = create((set, get) => ({
     localStorage.removeItem('orb_onboarding_complete')
     set({ hasCompletedOnboarding: false })
   },
+
+  // Helper function to normalize token IDs (ticker symbols to CoinGecko IDs)
+  getNormalizedTokenId: (tokenId) => {
+    const normalized = tokenId.toLowerCase()
+    return CRYPTO_ID_MAP[normalized] || normalized
+  },
+
+  // Helper function to get price data for a token (handles normalization)
+  getTokenPriceData: (tokenId) => {
+    const { prices, getNormalizedTokenId } = get()
+    const normalizedId = getNormalizedTokenId(tokenId)
+    return prices[normalizedId] || { usd: 0, usd_24h_change: 0 }
+  },
+
 
   // Data Sync State
   isDataSyncing: false,
@@ -969,14 +1021,25 @@ export const useStore = create((set, get) => ({
       const fetchKeys = [...new Set([...holdingKeys, ...defaultCryptos])]
 
       // Filter out known stocks (keys present in STOCK_SYMBOLS)
-      const cryptoIds = fetchKeys.filter(key => !STOCK_SYMBOLS[key])
+      const cryptoKeys = fetchKeys.filter(key => !STOCK_SYMBOLS[key])
 
       let cryptoData = {}
-      if (cryptoIds.length > 0) {
-        const idsParam = cryptoIds.join(',')
+      if (cryptoKeys.length > 0) {
+        // Map crypto keys to CoinGecko IDs
+        const mappedIds = cryptoKeys.map(key => CRYPTO_ID_MAP[key] || key)
+        const idsParam = mappedIds.join(',')
+
         const dynamicUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${idsParam}&vs_currencies=usd&include_24hr_change=true`)}`
         const cryptoRes = await axios.get(dynamicUrl)
-        cryptoData = cryptoRes.data
+
+        // Map the response back to original keys
+        // e.g., if user entered "atom", API returns "cosmos", we map it back to "atom"
+        cryptoKeys.forEach((originalKey, index) => {
+          const coingeckoId = mappedIds[index]
+          if (cryptoRes.data[coingeckoId]) {
+            cryptoData[originalKey] = cryptoRes.data[coingeckoId]
+          }
+        })
       }
 
       // Fetch real stock prices
