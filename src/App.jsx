@@ -16,6 +16,7 @@ import DataSyncLoader from './components/DataSyncLoader'
 import EmptyState from './components/EmptyState'
 import PortfolioPulse from './components/PortfolioPulse'
 import SessionTracker from './components/SessionTracker'
+import RocketBurst from './components/RocketBurst'
 import { useStore } from './store'
 
 function OrbModel({ isMobile }) {
@@ -327,6 +328,9 @@ function App() {
 
         {/* Session Tracker - Engagement metrics */}
         <SessionTracker />
+
+        {/* Rocket Burst - Celebration animation */}
+        <RocketBurst />
       </div>
     </>
   )
