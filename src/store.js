@@ -1032,14 +1032,9 @@ export const useStore = create((set, get) => ({
         const dynamicUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${idsParam}&vs_currencies=usd&include_24hr_change=true`)}`
         const cryptoRes = await axios.get(dynamicUrl)
 
-        // Map the response back to original keys
-        // e.g., if user entered "atom", API returns "cosmos", we map it back to "atom"
-        cryptoKeys.forEach((originalKey, index) => {
-          const coingeckoId = mappedIds[index]
-          if (cryptoRes.data[coingeckoId]) {
-            cryptoData[originalKey] = cryptoRes.data[coingeckoId]
-          }
-        })
+        // Store prices using CoinGecko IDs (not original keys)
+        // This way getTokenPriceData can find them after normalization
+        cryptoData = cryptoRes.data
       }
 
       // Fetch real stock prices
