@@ -1452,6 +1452,7 @@ export const useStore = create((set, get) => ({
       });
     } catch (err) {
       console.warn('Failed to fetch Nova Nodes data:', err.message);
+      get().addNotification('error', `Data Fetch Error: ${err.message}`);
     }
   },
 
