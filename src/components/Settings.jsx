@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import { useDraggable } from '../hooks/useDraggable'
 
 export default function Settings() {
     const [isOpen, setIsOpen] = useState(false)
@@ -9,6 +10,9 @@ export default function Settings() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
     const [showLegalPage, setShowLegalPage] = useState(null)
     const { settings, updateSetting, resetAllSettings, clearCachedData, sentimentColorMap, logout, isAuthenticated, isGuest, authMethod, userEmail, appVersion, changelog, featureFlags, setFeatureFlag, trackEvent } = useStore()
+
+    const buttonRef = useRef(null)
+    const { position, isDragging, handleDragStart, setPosition } = useDraggable(buttonRef)
 
     // Show toast notification
     const showToast = (message) => {
@@ -48,7 +52,11 @@ export default function Settings() {
     }, [settings.autoFadeEnabled, settings.fadeDelay])
 
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        const checkMobile = () => {
+            const mobile = window.innerWidth < 768
+            setIsMobile(mobile)
+            setPosition({ x: null, y: null })
+        }
         checkMobile()
         window.addEventListener('resize', checkMobile)
         return () => window.removeEventListener('resize', checkMobile)
@@ -255,6 +263,7 @@ export default function Settings() {
     const tabs = [
         { id: 'orb', label: '🔮 Orb', icon: '🔮' },
         { id: 'data', label: '📊 Data', icon: '📊' },
+        { id: 'defi', label: '🧬 DeFi', icon: '🧬' },
         { id: 'display', label: '🎨 Display', icon: '🎨' },
         { id: 'notify', label: '🔔 Alerts', icon: '🔔' },
         { id: 'privacy', label: '🔒 Privacy', icon: '🔒' },
@@ -264,29 +273,33 @@ export default function Settings() {
 
     const toggleButtonStyle = {
         position: 'fixed',
-        bottom: isMobile ? 'calc(var(--safe-area-bottom, 0px) + 80px)' : '70px',
-        left: '80px',
+        top: position.y !== null ? position.y : 'calc(var(--safe-area-top, 0px) + 20px)',
+        right: position.x !== null ? 'auto' : '20px',
+        bottom: 'auto',
+        left: position.x !== null ? position.x : 'auto',
         width: 40,
         height: 40,
         borderRadius: '50%',
         background: 'linear-gradient(135deg, #374151, #4b5563)',
-        border: 'none',
-        cursor: 'pointer',
+        border: isDragging ? '1px solid rgba(255,255,255,0.3)' : 'none',
+        cursor: isDragging ? 'grabbing' : 'grab',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+        boxShadow: isDragging ? '0 8px 30px rgba(0,0,0,0.6)' : '0 4px 20px rgba(0,0,0,0.4)',
         zIndex: 1000,
-        transition: 'all 0.3s ease, opacity 0.5s ease',
+        transition: isDragging ? 'none' : 'all 0.3s ease, opacity 0.5s ease',
         opacity: isVisible || isOpen ? 1 : 0,
         pointerEvents: 'auto',
         fontSize: 18,
+        userSelect: 'none'
     }
 
     const panelStyle = {
         position: 'fixed',
-        bottom: isMobile ? 'calc(var(--safe-area-bottom, 0px) + 130px)' : '120px',
-        left: '20px',
+        bottom: position.y !== null ? 'auto' : (isMobile ? 'calc(var(--safe-area-bottom, 0px) + 130px)' : '120px'),
+        left: position.x !== null ? position.x : '20px',
+        top: position.y !== null ? Math.max(10, position.y - 500) : 'auto',
         width: isMobile ? 'calc(100% - 40px)' : 380,
         maxWidth: 400,
         maxHeight: isMobile ? '70vh' : '75vh',
@@ -595,6 +608,47 @@ export default function Settings() {
                             step={10}
                             unit="s"
                         />
+                    </>
+                )
+
+            case 'defi':
+                return (
+                    <>
+                        <SectionHeader icon="🧬" title="Nova Nodes Protocol" />
+                        <div style={{
+                            background: 'rgba(189, 0, 255, 0.1)',
+                            border: '1px solid rgba(189, 0, 255, 0.3)',
+                            borderRadius: 12,
+                            padding: 16,
+                            marginBottom: 20
+                        }}>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: '#bd00ff', marginBottom: 6 }}>
+                                🔮 Protocol Insights Enabled
+                            </div>
+                            <div style={{ fontSize: 11, color: '#888', lineHeight: 1.5 }}>
+                                The Orb application is officially integrated with the Nova Nodes DeFi protocol on Avalanche.
+                                Your Node NFTs and $NOVA rewards are tracked in real-time.
+                            </div>
+                        </div>
+
+                        <ToggleSwitch
+                            enabled={true}
+                            onChange={() => { }}
+                            label="Auto-Update Protocol Data"
+                            description="Automatically fetch TVL and rewards every 5 minutes."
+                            disabled={true}
+                        />
+
+                        <ToggleSwitch
+                            enabled={true}
+                            onChange={() => { }}
+                            label="Transaction Celebrations"
+                            description="Show rocket bursts when staking or claiming rewards."
+                        />
+
+                        <InfoBox>
+                            Tip: You can access the DeFi dashboard directly using the floating Nova icon on the main screen.
+                        </InfoBox>
                     </>
                 )
 
@@ -932,6 +986,14 @@ export default function Settings() {
                         }}>
                             These features are scheduled for a future release.
                         </div>
+
+                        <ToggleSwitch
+                            enabled={featureFlags.volatilityAnimation}
+                            onChange={() => setFeatureFlag('volatilityAnimation', !featureFlags.volatilityAnimation)}
+                            label="Volatility-Based Animation"
+                            description="Glow and speed influenced by market movements."
+                        />
+
                         <ToggleSwitch
                             enabled={false}
                             onChange={() => { }}
@@ -1223,11 +1285,14 @@ export default function Settings() {
     return (
         <>
             <button
-                onClick={() => { setIsOpen(!isOpen); resetFadeTimer(); }}
+                ref={buttonRef}
+                onClick={() => { if (!isDragging) { setIsOpen(!isOpen); resetFadeTimer(); } }}
+                onMouseDown={handleDragStart}
+                onTouchStart={handleDragStart}
                 onMouseEnter={resetFadeTimer}
                 onDoubleClick={handleDoubleClick}
                 style={toggleButtonStyle}
-                title="Settings"
+                title="Settings (drag to move)"
             >
                 ⚙️
             </button>

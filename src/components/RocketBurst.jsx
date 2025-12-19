@@ -2,17 +2,16 @@ import { useEffect, useState } from 'react'
 import { useStore } from '../store'
 
 export default function RocketBurst() {
-    const { percentChange24h, isATH } = useStore()
+    const { percentChange24h, isATH, isBurstActive } = useStore()
     const [rockets, setRockets] = useState([])
     const [showBurst, setShowBurst] = useState(false)
 
-    // Trigger rocket burst on big gains or ATH
+    // Trigger rocket burst on big gains, ATH, or manual trigger
     useEffect(() => {
-        // Trigger on ATH or big gains (>5%)
-        if (isATH || percentChange24h > 5) {
+        if (isATH || percentChange24h > 5 || isBurstActive) {
             triggerBurst()
         }
-    }, [isATH, percentChange24h])
+    }, [isATH, percentChange24h, isBurstActive])
 
     const triggerBurst = () => {
         setShowBurst(true)

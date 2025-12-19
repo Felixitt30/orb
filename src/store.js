@@ -1,9 +1,21 @@
 /* eslint-disable */
 import { create } from 'zustand'
 import axios from 'axios'
+import { ethers } from 'ethers'
 import { supabase } from './lib/supabase'
+import { NOVA_ADDRESSES, NOVA_ABIS } from './lib/novaProtocol'
 
-const COINGECKO_API = `https://corsproxy.io/?${encodeURIComponent('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true')}`
+// CoinGecko API key (optional - increases rate limits from 10-30 calls/min to 10,000 calls/month)
+const COINGECKO_API_KEY = import.meta.env.VITE_COINGECKO_API_KEY
+
+// Helper to build CoinGecko API URL with optional API key
+const buildCoinGeckoUrl = (ids) => {
+  const baseUrl = `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`
+
+  // API key usage (if available) handles its own limits
+  // If no key, we use the public API directly (it supports CORS for simple/price)
+  return baseUrl
+}
 
 // Stock symbols to track
 const STOCK_SYMBOLS = {
@@ -75,16 +87,50 @@ const loadHoldings = () => {
 
 const INITIAL_HOLDINGS = loadHoldings()
 
+// Fallback prices in case API fails (updated periodically)
+const FALLBACK_STOCK_PRICES = {
+  apple: { usd: 175, usd_24h_change: 0.5 },
+  tesla: { usd: 250, usd_24h_change: -0.3 },
+  nvidia: { usd: 480, usd_24h_change: 1.2 }
+}
+
+// Fallback Crypto Prices (used if CoinGecko API fails)
+const FALLBACK_CRYPTO_PRICES = {
+  bitcoin: { usd: 65000, usd_24h_change: 2.5 },
+  ethereum: { usd: 3500, usd_24h_change: 1.2 },
+  solana: { usd: 145, usd_24h_change: -1.5 },
+  'avalanche-2': { usd: 55, usd_24h_change: 3.2 },
+  'cosmos': { usd: 11, usd_24h_change: 0.5 },
+  'polkadot': { usd: 8.5, usd_24h_change: -2.1 },
+  'cardano': { usd: 0.60, usd_24h_change: 1.0 },
+  'ripple': { usd: 0.62, usd_24h_change: 0.8 },
+  'dogecoin': { usd: 0.15, usd_24h_change: 5.0 },
+  'chainlink': { usd: 18, usd_24h_change: 2.2 },
+  'matic-network': { usd: 0.90, usd_24h_change: -0.5 },
+  'shiba-inu': { usd: 0.000028, usd_24h_change: 4.5 },
+  'uniswap': { usd: 12, usd_24h_change: 1.5 },
+  'binancecoin': { usd: 580, usd_24h_change: 0.5 },
+  'litecoin': { usd: 85, usd_24h_change: 0.2 },
+  'stellar': { usd: 0.13, usd_24h_change: 1.1 },
+  'vechain': { usd: 0.04, usd_24h_change: 0.5 },
+  'filecoin': { usd: 8.5, usd_24h_change: -1.2 },
+  'aptos': { usd: 14, usd_24h_change: 3.5 },
+  'arbitrum': { usd: 1.5, usd_24h_change: 0.2 },
+  'optimism': { usd: 3.5, usd_24h_change: 1.8 },
+  'near': { usd: 7.2, usd_24h_change: 2.5 },
+  'fantom': { usd: 0.85, usd_24h_change: 4.0 },
+  'injective-protocol': { usd: 35, usd_24h_change: 5.5 },
+  'sui': { usd: 1.8, usd_24h_change: 2.0 },
+  'sei-network': { usd: 0.75, usd_24h_change: 1.5 },
+  'celestia': { usd: 14, usd_24h_change: -0.5 },
+  'pepe': { usd: 0.000008, usd_24h_change: 10.5 },
+  'render-token': { usd: 10, usd_24h_change: 3.2 },
+  'fetch-ai': { usd: 2.5, usd_24h_change: 4.5 },
+}
+
 // Fetch real stock prices from Yahoo Finance API via CORS proxy
 async function fetchStockPrices() {
   const stockData = {}
-
-  // Fallback prices in case API fails (updated periodically)
-  const fallbackPrices = {
-    apple: { usd: 175, usd_24h_change: 0.5 },
-    tesla: { usd: 250, usd_24h_change: -0.3 },
-    nvidia: { usd: 480, usd_24h_change: 1.2 }
-  }
 
   try {
     // Try fetching all stocks in parallel using CORS proxy
@@ -109,14 +155,14 @@ async function fetchStockPrices() {
         return {
           key,
           data: {
-            usd: currentPrice || fallbackPrices[key]?.usd || 0,
+            usd: currentPrice || FALLBACK_STOCK_PRICES[key]?.usd || 0,
             usd_24h_change: change
           }
         }
       } catch (err) {
         // If individual stock fails, use fallback
         console.warn(`Failed to fetch ${symbol}:`, err.message)
-        return { key, data: fallbackPrices[key] || { usd: 0, usd_24h_change: 0 } }
+        return { key, data: FALLBACK_STOCK_PRICES[key] || { usd: 0, usd_24h_change: 0 } }
       }
     })
 
@@ -128,7 +174,7 @@ async function fetchStockPrices() {
   } catch (err) {
     // Return fallbacks if all fail
     console.warn('Stock API failed completely, using fallback prices')
-    return fallbackPrices
+    return FALLBACK_STOCK_PRICES
   }
 
   return stockData
@@ -138,12 +184,12 @@ export const useStore = create((set, get) => ({
   // State
   holdings: INITIAL_HOLDINGS,
   prices: {
-    bitcoin: { usd: 0, usd_24h_change: 0 },
-    ethereum: { usd: 0, usd_24h_change: 0 },
-    solana: { usd: 0, usd_24h_change: 0 },
-    apple: { usd: 0, usd_24h_change: 0 },
-    tesla: { usd: 0, usd_24h_change: 0 },
-    nvidia: { usd: 0, usd_24h_change: 0 },
+    bitcoin: { usd: null, usd_24h_change: 0 },
+    ethereum: { usd: null, usd_24h_change: 0 },
+    solana: { usd: null, usd_24h_change: 0 },
+    apple: { usd: null, usd_24h_change: 0 },
+    tesla: { usd: null, usd_24h_change: 0 },
+    nvidia: { usd: null, usd_24h_change: 0 },
   },
   isLoadingPrices: true, // Track if prices are currently loading
   // Financial Data
@@ -289,6 +335,13 @@ export const useStore = create((set, get) => ({
     errors: []
   },
 
+  refreshAllData: async () => {
+    await Promise.all([
+      get().fetchData(true),
+      get().fetchNovaData()
+    ]);
+  },
+
   trackEvent: (eventName, eventData = {}) => {
     // Privacy-safe: no PII, no financial data
     const event = {
@@ -323,7 +376,7 @@ export const useStore = create((set, get) => ({
     notifications: true,
     analytics: true,
     // Phase 2 - Scheduled
-    volatilityAnimation: false, // Scheduled: volatility-based orb animation
+    volatilityAnimation: true, // Now Live!
     advancedNotifications: false, // Scheduled: sentiment alerts, major movements, daily summaries
     sentimentSourceSelection: false, // Scheduled: portfolio vs market sentiment
     offlineEnhancements: false, // Scheduled: explicit offline mode
@@ -376,7 +429,9 @@ export const useStore = create((set, get) => ({
         'Optional Guest mode with limited functionality',
         'First-time onboarding flow',
         'Privacy controls and settings',
-        'Error and offline state handling'
+        'Error and offline state handling',
+        'Nova Nodes DeFi protocol integration - Stake, Mint, and Claim',
+        'Volatility-based orb animations'
       ]
     }
   ],
@@ -407,6 +462,26 @@ export const useStore = create((set, get) => ({
   userId: localStorage.getItem('orb_userId') || null, // For Supabase persistence
   authError: null,
   isAuthLoading: false,
+  isNovaNodesOpen: false,
+
+  // Nova Nodes State
+  novaNodes: {
+    tvl: 0,
+    totalNodes: 0,
+    rewardTokenPrice: 0.1,
+    userNodes: [],
+    pendingRewards: 0,
+    userAssetBalance: 0,
+  },
+  isBurstActive: false,
+  triggerBurst: () => {
+    set({ isBurstActive: true });
+    setTimeout(() => set({ isBurstActive: false }), 4000);
+  },
+
+  toggleNovaNodes: (open) => set((state) => ({
+    isNovaNodesOpen: open !== undefined ? open : !state.isNovaNodesOpen
+  })),
 
   // Input Draft Persistence
   inputDrafts: { symbol: '', amount: '' },
@@ -433,6 +508,10 @@ export const useStore = create((set, get) => ({
         config_value: holdings,
         updated_at: new Date().toISOString()
       }, { onConflict: 'user_id, config_key' })
+
+      // ALSO save to localStorage for offline/resilience
+      localStorage.setItem('orb_holdings', JSON.stringify(holdings))
+
     } catch (e) {
       console.warn('[Supabase] Save holdings failed', e)
     }
@@ -443,6 +522,7 @@ export const useStore = create((set, get) => ({
     const userId = `${method}_${identifier}` // Generate stable ID
     localStorage.setItem('orb_authenticated', 'true')
     localStorage.setItem('orb_guest', 'false')
+    localStorage.removeItem('orb_guest') // Ensure it's cleared
     localStorage.setItem('orb_authMethod', method)
     localStorage.setItem('orb_userId', userId)
 
@@ -465,9 +545,47 @@ export const useStore = create((set, get) => ({
     })
 
     // Load persisted holdings
-    get().loadUserConfig('portfolio_holdings').then(holdings => {
-      if (holdings && Object.keys(holdings).length > 0) {
-        set({ holdings })
+    get().loadUserConfig('portfolio_holdings').then(cloudHoldings => {
+      // Check if we have local holdings that might be fresher/better than cloud
+      try {
+        const localHoldings = JSON.parse(localStorage.getItem('orb_holdings') || '{}')
+
+        // If local has keys that cloud/default doesn't (e.g. 'atom'), prefer local or merge
+        const hasLocalCustomData = Object.keys(localHoldings).some(key =>
+          !DEFAULT_HOLDINGS[key] || (cloudHoldings && !cloudHoldings[key])
+        )
+
+        // If cloud is empty but local exists, use local
+        if ((!cloudHoldings || Object.keys(cloudHoldings).length === 0) && Object.keys(localHoldings).length > 0) {
+          console.log('[Login] Using local holdings (Cloud empty)')
+          set({ holdings: localHoldings })
+          get().fetchData(true)
+          // Sync to cloud for next time
+          get().saveHoldings()
+          return
+        }
+
+        // If local has custom data likely missing from cloud (e.g. user added 'atom' locally before login)
+        if (hasLocalCustomData) {
+          console.log('[Login] Merging/Preferring local holdings over cloud defaults')
+          // Merge: Cloud overwrites local for matches, but keep unique local keys
+          const merged = { ...localHoldings, ...(cloudHoldings || {}) }
+          // Or strictly prefer local if it seems 'better'? 
+          // For now, let's trust local if it has 'atom' and cloud doesn't.
+          const finalHoldings = localHoldings // Strict preference for this case based on user feedback
+
+          set({ holdings: finalHoldings })
+          get().fetchData(true)
+          get().saveHoldings() // Update cloud
+          return
+        }
+      } catch (e) {
+        console.warn('[Login] Local storage check failed', e)
+      }
+
+      // Default behavior: Trust Cloud if no local conflict
+      if (cloudHoldings && Object.keys(cloudHoldings).length > 0) {
+        set({ holdings: cloudHoldings })
         // Trigger fetch to update prices for these holdings
         get().fetchData(true)
       }
@@ -529,7 +647,7 @@ export const useStore = create((set, get) => ({
   getTokenPriceData: (tokenId) => {
     const { prices, getNormalizedTokenId } = get()
     const normalizedId = getNormalizedTokenId(tokenId)
-    return prices[normalizedId] || { usd: 0, usd_24h_change: 0 }
+    return prices[normalizedId] || { usd: null, usd_24h_change: 0 }
   },
 
 
@@ -690,10 +808,18 @@ export const useStore = create((set, get) => ({
     }
 
     try {
-      // Request account access
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
-      })
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout. Please make sure MetaMask is unlocked and try again.')), 30000)
+      )
+
+      // Request account access with timeout
+      const accounts = await Promise.race([
+        window.ethereum.request({
+          method: 'eth_requestAccounts'
+        }),
+        timeoutPromise
+      ])
 
       if (accounts.length === 0) {
         throw new Error('No accounts found. Please unlock MetaMask.')
@@ -744,6 +870,9 @@ export const useStore = create((set, get) => ({
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in MetaMask.')
       }
+      if (err.message && err.message.includes('Failed to fetch')) {
+        throw new Error('Network Error: Unable to reach Ethereum node. Check your RPC settings.')
+      }
       throw err
     }
   },
@@ -793,6 +922,9 @@ export const useStore = create((set, get) => ({
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in Phantom.')
       }
+      if (err.message && err.message.includes('Failed to fetch')) {
+        throw new Error('Network Error: Unable to reach Solana node.')
+      }
       throw err
     }
   },
@@ -805,9 +937,17 @@ export const useStore = create((set, get) => ({
     }
 
     try {
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
-      })
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout. Please make sure Coinbase Wallet is unlocked and try again.')), 30000)
+      )
+
+      const accounts = await Promise.race([
+        window.ethereum.request({
+          method: 'eth_requestAccounts'
+        }),
+        timeoutPromise
+      ])
 
       if (accounts.length === 0) {
         throw new Error('No accounts found. Please unlock Coinbase Wallet.')
@@ -850,6 +990,9 @@ export const useStore = create((set, get) => ({
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in Coinbase Wallet.')
       }
+      if (err.message && err.message.includes('Failed to fetch')) {
+        throw new Error('Network Error: Unable to reach Ethereum node. Check your RPC settings.')
+      }
       throw err
     }
   },
@@ -861,9 +1004,17 @@ export const useStore = create((set, get) => ({
     }
 
     try {
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts'
-      })
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Connection timeout. Please make sure Rabby Wallet is unlocked and try again.')), 30000)
+      )
+
+      const accounts = await Promise.race([
+        window.ethereum.request({
+          method: 'eth_requestAccounts'
+        }),
+        timeoutPromise
+      ])
 
       if (accounts.length === 0) {
         throw new Error('No accounts found. Please unlock Rabby Wallet.')
@@ -905,6 +1056,9 @@ export const useStore = create((set, get) => ({
     } catch (err) {
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in Rabby Wallet.')
+      }
+      if (err.message && err.message.includes('Failed to fetch')) {
+        throw new Error('Network Error: Unable to reach Ethereum node. Check your RPC settings.')
       }
       throw err
     }
@@ -963,6 +1117,9 @@ export const useStore = create((set, get) => ({
     } catch (err) {
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in Core Wallet.')
+      }
+      if (err.message && err.message.includes('Failed to fetch')) {
+        throw new Error('Network Error: Unable to reach Avalanche node. Check your RPC settings.')
       }
       throw err
     }
@@ -1024,20 +1181,63 @@ export const useStore = create((set, get) => ({
       const cryptoKeys = fetchKeys.filter(key => !STOCK_SYMBOLS[key])
 
       let cryptoData = {}
-      if (cryptoKeys.length > 0) {
-        // Map crypto keys to CoinGecko IDs
-        const mappedIds = cryptoKeys.map(key => CRYPTO_ID_MAP[key] || key)
-        const idsParam = mappedIds.join(',')
 
-        const dynamicUrl = `https://corsproxy.io/?${encodeURIComponent(`https://api.coingecko.com/api/v3/simple/price?ids=${idsParam}&vs_currencies=usd&include_24hr_change=true`)}`
-        const cryptoRes = await axios.get(dynamicUrl)
+      // Separate try-catch for Crypto API to ensure Stocks still load if Crypto fails
+      try {
+        if (cryptoKeys.length > 0) {
+          // Map crypto keys to CoinGecko IDs
+          const mappedIds = cryptoKeys.map(key => CRYPTO_ID_MAP[key] || key)
+          const idsParam = mappedIds.join(',')
 
-        // Store prices using CoinGecko IDs (not original keys)
-        // This way getTokenPriceData can find them after normalization
-        cryptoData = cryptoRes.data
+          const dynamicUrl = buildCoinGeckoUrl(idsParam)
+
+          // Build request config with optional API key header
+          const requestConfig = {}
+          if (COINGECKO_API_KEY) {
+            requestConfig.headers = {
+              'x-cg-demo-api-key': COINGECKO_API_KEY
+            }
+          }
+
+          const cryptoRes = await axios.get(dynamicUrl, { ...requestConfig, timeout: 5000 })
+          cryptoData = cryptoRes.data
+
+          // Validate keys: If API returned 0 or missing data, force fallback
+          cryptoKeys.forEach(key => {
+            const mappedId = CRYPTO_ID_MAP[key] || key
+            const priceInfo = cryptoData[mappedId]
+
+            // If data is missing or price is 0 (invalid for these assets), use fallback
+            if (!priceInfo || !priceInfo.usd || priceInfo.usd === 0) {
+              // Clone fallback to avoid mutating constant
+              if (FALLBACK_CRYPTO_PRICES[mappedId]) {
+                cryptoData[mappedId] = { ...FALLBACK_CRYPTO_PRICES[mappedId] }
+              }
+            }
+          })
+        }
+      } catch (cryptoErr) {
+        console.warn('Crypto API failed, using fallbacks:', cryptoErr.message)
+        // Use fallbacks for requested keys
+        cryptoKeys.forEach(key => {
+          const mappedId = CRYPTO_ID_MAP[key] || key
+          if (FALLBACK_CRYPTO_PRICES[mappedId]) {
+            cryptoData[mappedId] = FALLBACK_CRYPTO_PRICES[mappedId]
+          }
+        })
       }
 
-      // Fetch real stock prices
+      // Paranoia check: Ensure all keys have SOME data (prevents blank UI)
+      cryptoKeys.forEach(key => {
+        const mappedId = CRYPTO_ID_MAP[key] || key
+        if (!cryptoData[mappedId] || !cryptoData[mappedId].usd) {
+          if (FALLBACK_CRYPTO_PRICES[mappedId]) {
+            cryptoData[mappedId] = FALLBACK_CRYPTO_PRICES[mappedId];
+          }
+        }
+      });
+
+      // Fetch real stock prices (internally handles its own fallbacks)
       const stockData = await fetchStockPrices()
 
       const newPrices = { ...cryptoData, ...stockData }
@@ -1124,12 +1324,256 @@ export const useStore = create((set, get) => ({
       // Track error for analytics
       trackEvent('error', { type: 'fetch_error', message: err.message })
 
-      // Silent error handling - don't log to prevent beeps
+      // Silent error handling
       set({
-        totalValue: 0,
-        percentChange24h: 0
+        isLoadingPrices: false // Ensure loading state is cleared even on error
       })
     }
+  },
+
+  // === NOVA NODES LIVE ACTIONS ===
+  fetchNovaData: async () => {
+    const { connectedWallets } = get();
+    let provider;
+
+    // Use the same robust provider detection as staking
+    if (connectedWallets.core && window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (connectedWallets.metamask && window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else if (window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else {
+      // Fallback to Localhost RPC if no wallet found (read-only)
+      // Try LAN IP first for mobile, then fallback to localhost
+      try {
+        // Note: Some mobile wallets/browsers block HTTP RPCs. 
+        // If this throws "uris require https", we fallback to empty/localhost to prevent app crash.
+        provider = new ethers.JsonRpcProvider("http://192.168.68.60:8545");
+      } catch (e) {
+        console.warn("LAN RPC init failed, falling back to localhost", e);
+        try {
+          provider = new ethers.JsonRpcProvider("http://127.0.0.1:8545");
+        } catch (e2) {
+          console.error("Localhost RPC init failed", e2);
+          // create a dummy provider to prevent crash
+          provider = {
+            listAccounts: async () => [],
+            getNetwork: async () => ({ chainId: 31337 }),
+            getCode: async () => '0x'
+          };
+        }
+      }
+    }
+
+    try {
+      const vault = new ethers.Contract(NOVA_ADDRESSES.StakingVault, NOVA_ABIS.StakingVault, provider);
+      const nft = new ethers.Contract(NOVA_ADDRESSES.NodeNFT, NOVA_ABIS.NodeNFT, provider);
+      const distributor = new ethers.Contract(NOVA_ADDRESSES.RewardDistributor, NOVA_ABIS.RewardDistributor, provider);
+
+      // Fetch Global Data
+      const [tvl, totalNodes] = await Promise.race([
+        Promise.all([
+          vault.totalStaked(),
+          nft.totalSupply()
+        ]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout fetching global data')), 5000))
+      ]);
+
+      // Determine User Address
+      let userAddress = connectedWallets.metamask || connectedWallets.core;
+
+      // If no address in store, try to fetch from provider (Auto-detect after refresh)
+      if (!userAddress && provider.listAccounts) {
+        try {
+          const accounts = await provider.listAccounts();
+          if (accounts.length > 0) {
+            // Ethers v6: accounts[0] is a Signer. Need to get address properly.
+            userAddress = await accounts[0].getAddress();
+
+            // SYNC BACK TO STORE so the UI knows we are connected!
+            const currentWallets = get().connectedWallets;
+            // Ideally detect which wallet type, but for now duplicate to ensure it works
+            if (window.avalanche) {
+              set({ connectedWallets: { ...currentWallets, core: userAddress } });
+            } else {
+              set({ connectedWallets: { ...currentWallets, metamask: userAddress } });
+            }
+          }
+        } catch (e) {
+          console.log("Could not auto-detect accounts", e);
+        }
+      }
+
+      // Fetch User Specific Data
+      let userNodes = [];
+      let pendingRewards = BigInt(0);
+      let userAssetBalance = BigInt(0);
+
+      if (userAddress) {
+        try {
+          // Fetch asset balance
+          const assetContract = new ethers.Contract(NOVA_ADDRESSES.UnderlyingAsset, NOVA_ABIS.ERC20, provider);
+          userAssetBalance = await assetContract.balanceOf(userAddress);
+
+          const balance = await nft.balanceOf(userAddress);
+          for (let i = 0; i < Number(balance); i++) {
+            const tokenId = await nft.tokenOfOwnerByIndex(userAddress, i);
+            const [staked, rarity, lastClaim] = await nft.nodes(tokenId);
+            const pending = await distributor.pendingRewards(tokenId);
+
+            userNodes.push({
+              id: `#${tokenId.toString()}`,
+              amount: ethers.formatEther(staked),
+              rarity: ["Common", "Uncommon", "Rare", "Legendary"][Number(rarity)],
+              multiplier: ["1.0x", "1.5x", "2.5x", "4.0x"][Number(rarity)],
+              color: ["#64748b", "#00ffcc", "#bd00ff", "#ff0055"][Number(rarity)],
+              tokenId: tokenId.toString()
+            });
+            pendingRewards += pending;
+          }
+        } catch (err) {
+          console.warn("Error fetching user data:", err);
+        }
+      }
+
+      set({
+        novaNodes: {
+          tvl: ethers.formatEther(tvl),
+          totalNodes: totalNodes.toString(),
+          rewardTokenPrice: 0.124, // Mock for now
+          userNodes,
+          pendingRewards: ethers.formatEther(pendingRewards),
+          userAssetBalance: ethers.formatEther(userAssetBalance)
+        }
+      });
+    } catch (err) {
+      console.warn('Failed to fetch Nova Nodes data:', err.message);
+    }
+  },
+
+  // Helper to ensure correct network (Localhost)
+  ensureLocalhostNetwork: async (provider) => {
+    const { chainId } = await provider.getNetwork();
+    if (Number(chainId) === 31337) return; // Already on Localhost
+
+    try {
+      await provider.send("wallet_switchEthereumChain", [{ chainId: "0x7a69" }]); // 31337 in hex
+    } catch (switchError) {
+      // This error code indicates that the chain has not been added to MetaMask.
+      if (switchError.code === 4902 || switchError.code === -32603) {
+        try {
+          await provider.send("wallet_addEthereumChain", [{
+            chainId: "0x7a69",
+            chainName: "Localhost Hardhat",
+            rpcUrls: ["http://192.168.68.60:8545"],
+            nativeCurrency: {
+              name: "ETH",
+              symbol: "ETH",
+              decimals: 18
+            },
+            blockExplorerUrls: null
+          }]);
+        } catch (addError) {
+          console.error("Failed to add network:", addError);
+          if (addError.message && (addError.message.includes("https") || addError.message.includes("match"))) {
+            alert("Network Error: URL/ChainID mismatch or HTTPS required.\n\nTip: If you already have a 'Localhost 8545' network, please DELETE it or EDIT it to use RPC URL: http://192.168.68.60:8545");
+          }
+          throw new Error('Please manually switch/add your wallet network to Localhost (Chain ID: 31337).');
+        }
+      } else {
+        throw new Error('Please manually switch your wallet network to Localhost (Chain ID: 31337).');
+      }
+    }
+  },
+
+  stakeAVAX: async (amountEth) => {
+    const { connectedWallets } = get();
+    let provider;
+
+    // Prioritize the wallet typically used for this chain, or fall back to what's available
+    if (connectedWallets.core && window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (connectedWallets.metamask && window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else if (window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else {
+      throw new Error('No wallet connected');
+    }
+
+    // Enforce Network
+    await get().ensureLocalhostNetwork(provider);
+
+    const signer = await provider.getSigner();
+
+    // Verify contract exists on this network before calling
+    const code = await provider.getCode(NOVA_ADDRESSES.UnderlyingAsset);
+    if (code === '0x') {
+      throw new Error(`Token contract not found on this network (${(await provider.getNetwork()).name}). Please ensure your wallet is connected to Localhost 8545.`);
+    }
+
+    const vault = new ethers.Contract(NOVA_ADDRESSES.StakingVault, NOVA_ABIS.StakingVault, signer);
+    const asset = new ethers.Contract(NOVA_ADDRESSES.UnderlyingAsset, NOVA_ABIS.ERC20, signer);
+
+    const amount = ethers.parseEther(amountEth);
+
+    // Check allowance
+    try {
+      const allowance = await asset.allowance(await signer.getAddress(), NOVA_ADDRESSES.StakingVault);
+      if (allowance < amount) {
+        const tx = await asset.approve(NOVA_ADDRESSES.StakingVault, ethers.MaxUint256);
+        await tx.wait();
+      }
+
+      const tx = await vault.stake(NOVA_ADDRESSES.UnderlyingAsset, amount);
+      await tx.wait();
+
+      // Refresh data
+      await get().fetchNovaData();
+      get().triggerBurst(); // Celebrate!
+      get().trackEvent('nova_node_staked', { amount: amountEth });
+    } catch (err) {
+      if (err.code === 'CALL_EXCEPTION' || (err.message && err.message.includes('missing revert data'))) {
+        throw new Error('Contracts not found on network. Please run the deploy script: npx hardhat run scripts/deploy/01-deploy-core.js --network localhost');
+      }
+      throw err;
+    }
+  },
+
+  claimNovaReward: async (tokenId) => {
+    const { connectedWallets } = get();
+    let provider;
+
+    if (connectedWallets.core && window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (connectedWallets.metamask && window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else if (window.avalanche) {
+      provider = new ethers.BrowserProvider(window.avalanche);
+    } else if (window.ethereum) {
+      provider = new ethers.BrowserProvider(window.ethereum);
+    } else {
+      throw new Error('No wallet connected');
+    }
+
+    // Enforce Network
+    await get().ensureLocalhostNetwork(provider);
+
+    const signer = await provider.getSigner();
+
+    const distributor = new ethers.Contract(NOVA_ADDRESSES.RewardDistributor, NOVA_ABIS.RewardDistributor, signer);
+    const tx = await distributor.claimReward(tokenId);
+    await tx.wait();
+
+    // Refresh data
+    await get().fetchNovaData();
+    get().triggerBurst(); // Celebrate!
+    get().trackEvent('nova_reward_claimed', { tokenId });
   },
 
   updateHoldings: (newHoldings) => {

@@ -1,11 +1,21 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import { useDraggable } from '../hooks/useDraggable'
 
 export function StockTicker() {
     const { prices, musicIsPlaying, musicCurrentTrack, musicAudioRef, isDarkMode, settings, isInputFocused } = useStore()
     const isPlaying = musicIsPlaying
     const currentTrack = musicCurrentTrack
     const audioRef = musicAudioRef
+
+    // Sections
+    const musicRef = useRef(null)
+    const stocksRef = useRef(null)
+    const cryptoRef = useRef(null)
+
+    const musicDrag = useDraggable(musicRef)
+    const stocksDrag = useDraggable(stocksRef)
+    const cryptoDrag = useDraggable(cryptoRef)
 
     // Visibility state for auto-fade
     const [isVisible, setIsVisible] = useState(true)
@@ -152,14 +162,30 @@ export function StockTicker() {
             }}>
             {/* Music Controls - Only show if track is loaded */}
             {currentTrack && (
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    paddingRight: 15,
-                    borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-                    flexShrink: 0
-                }}>
+                <div
+                    ref={musicRef}
+                    onMouseDown={musicDrag.handleDragStart}
+                    onTouchStart={musicDrag.handleDragStart}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: musicDrag.position.x !== null ? '10px 15px' : '0 15px 0 0',
+                        borderRight: musicDrag.position.x !== null ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                        flexShrink: 0,
+                        position: musicDrag.position.x !== null ? 'fixed' : 'relative',
+                        left: musicDrag.position.x !== null ? musicDrag.position.x : 'auto',
+                        top: musicDrag.position.y !== null ? musicDrag.position.y : 'auto',
+                        background: musicDrag.position.x !== null ? bgColor : 'transparent',
+                        backdropFilter: musicDrag.position.x !== null ? 'blur(10px)' : 'none',
+                        borderRadius: musicDrag.position.x !== null ? 8 : 0,
+                        border: musicDrag.position.x !== null ? `1px solid ${borderColor}` : 'none',
+                        zIndex: 1001,
+                        cursor: musicDrag.isDragging ? 'grabbing' : 'grab',
+                        transition: musicDrag.isDragging ? 'none' : 'all 0.3s ease'
+                    }}
+                    title="Music Status (drag to move)"
+                >
                     {/* Now Playing Indicator */}
                     <div style={{
                         display: 'flex',
@@ -255,7 +281,28 @@ export function StockTicker() {
             )}
 
             {/* Stocks Section */}
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+            <div
+                ref={stocksRef}
+                onMouseDown={stocksDrag.handleDragStart}
+                onTouchStart={stocksDrag.handleDragStart}
+                style={{
+                    display: 'flex',
+                    gap: 20,
+                    alignItems: 'center',
+                    position: stocksDrag.position.x !== null ? 'fixed' : 'relative',
+                    left: stocksDrag.position.x !== null ? stocksDrag.position.x : 'auto',
+                    top: stocksDrag.position.y !== null ? stocksDrag.position.y : 'auto',
+                    padding: stocksDrag.position.x !== null ? '10px 15px' : 0,
+                    background: stocksDrag.position.x !== null ? bgColor : 'transparent',
+                    backdropFilter: stocksDrag.position.x !== null ? 'blur(10px)' : 'none',
+                    borderRadius: stocksDrag.position.x !== null ? 8 : 0,
+                    border: stocksDrag.position.x !== null ? `1px solid ${borderColor}` : 'none',
+                    zIndex: 1001,
+                    cursor: stocksDrag.isDragging ? 'grabbing' : 'grab',
+                    transition: stocksDrag.isDragging ? 'none' : 'all 0.3s ease'
+                }}
+                title="Stock Ticker (drag to move)"
+            >
                 <span style={{ color: labelColor, fontWeight: 'bold', fontSize: 11 }}>STOCKS</span>
                 {stocks.map(({ key, symbol }) => {
                     const price = prices[key]
@@ -278,10 +325,33 @@ export function StockTicker() {
             </div>
 
             {/* Divider */}
-            <div style={{ width: 1, background: borderColor, height: 20 }} />
+            {stocksDrag.position.x === null && cryptoDrag.position.x === null && (
+                <div style={{ width: 1, background: borderColor, height: 20 }} />
+            )}
 
             {/* Crypto Section */}
-            <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
+            <div
+                ref={cryptoRef}
+                onMouseDown={cryptoDrag.handleDragStart}
+                onTouchStart={cryptoDrag.handleDragStart}
+                style={{
+                    display: 'flex',
+                    gap: 20,
+                    alignItems: 'center',
+                    position: cryptoDrag.position.x !== null ? 'fixed' : 'relative',
+                    left: cryptoDrag.position.x !== null ? cryptoDrag.position.x : 'auto',
+                    top: cryptoDrag.position.y !== null ? cryptoDrag.position.y : 'auto',
+                    padding: cryptoDrag.position.x !== null ? '10px 15px' : 0,
+                    background: cryptoDrag.position.x !== null ? bgColor : 'transparent',
+                    backdropFilter: cryptoDrag.position.x !== null ? 'blur(10px)' : 'none',
+                    borderRadius: cryptoDrag.position.x !== null ? 8 : 0,
+                    border: cryptoDrag.position.x !== null ? `1px solid ${borderColor}` : 'none',
+                    zIndex: 1001,
+                    cursor: cryptoDrag.isDragging ? 'grabbing' : 'grab',
+                    transition: cryptoDrag.isDragging ? 'none' : 'all 0.3s ease'
+                }}
+                title="Crypto Ticker (drag to move)"
+            >
                 <span style={{ color: labelColor, fontWeight: 'bold', fontSize: 11 }}>CRYPTO</span>
                 {cryptos.map(({ key, symbol }) => {
                     const price = prices[key]

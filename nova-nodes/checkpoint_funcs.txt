@@ -1,0 +1,123 @@
+﻿
+    function push(
+    function 
+lowerLookup(Trace224 
+storage self, uint32 key) 
+internal view returns 
+(uint224) {
+    function 
+upperLookup(Trace224 
+storage self, uint32 key) 
+internal view returns 
+(uint224) {
+    function 
+upperLookupRecent(Trace224 
+storage self, uint32 key) 
+internal view returns 
+(uint224) {
+    function 
+latest(Trace224 storage 
+self) internal view returns 
+(uint224) {
+    function 
+latestCheckpoint(Trace224 
+storage self) internal view 
+returns (bool exists, 
+uint32 _key, uint224 
+_value) {
+    function 
+length(Trace224 storage 
+self) internal view returns 
+(uint256) {
+    function at(Trace224 
+storage self, uint32 pos) 
+internal view returns 
+(Checkpoint224 memory) {
+    function _insert(
+    function 
+_upperBinaryLookup(
+    function 
+_lowerBinaryLookup(
+    function _unsafeAccess(
+    function push(
+    function 
+lowerLookup(Trace208 
+storage self, uint48 key) 
+internal view returns 
+(uint208) {
+    function 
+upperLookup(Trace208 
+storage self, uint48 key) 
+internal view returns 
+(uint208) {
+    function 
+upperLookupRecent(Trace208 
+storage self, uint48 key) 
+internal view returns 
+(uint208) {
+    function 
+latest(Trace208 storage 
+self) internal view returns 
+(uint208) {
+    function 
+latestCheckpoint(Trace208 
+storage self) internal view 
+returns (bool exists, 
+uint48 _key, uint208 
+_value) {
+    function 
+length(Trace208 storage 
+self) internal view returns 
+(uint256) {
+    function at(Trace208 
+storage self, uint32 pos) 
+internal view returns 
+(Checkpoint208 memory) {
+    function _insert(
+    function 
+_upperBinaryLookup(
+    function 
+_lowerBinaryLookup(
+    function _unsafeAccess(
+    function push(
+    function 
+lowerLookup(Trace160 
+storage self, uint96 key) 
+internal view returns 
+(uint160) {
+    function 
+upperLookup(Trace160 
+storage self, uint96 key) 
+internal view returns 
+(uint160) {
+    function 
+upperLookupRecent(Trace160 
+storage self, uint96 key) 
+internal view returns 
+(uint160) {
+    function 
+latest(Trace160 storage 
+self) internal view returns 
+(uint160) {
+    function 
+latestCheckpoint(Trace160 
+storage self) internal view 
+returns (bool exists, 
+uint96 _key, uint160 
+_value) {
+    function 
+length(Trace160 storage 
+self) internal view returns 
+(uint256) {
+    function at(Trace160 
+storage self, uint32 pos) 
+internal view returns 
+(Checkpoint160 memory) {
+    function _insert(
+    function 
+_upperBinaryLookup(
+    function 
+_lowerBinaryLookup(
+    function _unsafeAccess(
+
+

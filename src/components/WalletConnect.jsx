@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import { useDraggable } from '../hooks/useDraggable'
 
 export default function WalletConnect() {
     const {
@@ -17,6 +18,8 @@ export default function WalletConnect() {
     const [isMobile, setIsMobile] = useState(false)
     const [isConnecting, setIsConnecting] = useState(null)
     const [error, setError] = useState(null)
+    const containerRef = useRef(null)
+    const { position, isDragging, handleDragStart, setPosition } = useDraggable(containerRef)
 
     // Visibility state for auto-fade
     const [isVisible, setIsVisible] = useState(true)
@@ -46,7 +49,11 @@ export default function WalletConnect() {
     }, [])
 
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768)
+        const checkMobile = () => {
+            const mobile = window.innerWidth < 768
+            setIsMobile(mobile)
+            setPosition({ x: null, y: null })
+        }
         checkMobile()
         window.addEventListener('resize', checkMobile)
         return () => window.removeEventListener('resize', checkMobile)
@@ -153,34 +160,39 @@ export default function WalletConnect() {
         )
     }
 
+    const containerStyle = {
+        position: 'fixed',
+        top: position.y !== null ? position.y : (isMobile ? 'auto' : 'calc(var(--safe-area-top, 0px) + 20px)'),
+        left: position.x !== null ? position.x : (isMobile ? 'calc(var(--safe-area-left, 0px) + 12px)' : 'calc(var(--safe-area-left, 0px) + 350px)'),
+        right: isMobile && position.x === null ? 'calc(var(--safe-area-right, 0px) + 12px)' : 'auto',
+        bottom: isMobile && position.y === null ? 'calc(var(--safe-area-bottom, 0px) + 120px)' : 'auto',
+        width: isMobile && position.x === null ? 'auto' : 200,
+        maxWidth: isMobile ? 'calc(100% - 24px)' : 200,
+        background: 'rgba(20, 20, 30, 0.95)',
+        backdropFilter: 'blur(10px)',
+        borderRadius: 12,
+        padding: isExpanded ? '14px' : '10px 14px',
+        border: isDragging ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.1)',
+        color: 'white',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        fontSize: 13,
+        zIndex: 99,
+        transition: isDragging ? 'none' : 'all 0.2s ease, opacity 0.5s ease',
+        opacity: isVisible ? 1 : 0,
+        pointerEvents: 'auto',
+        cursor: isDragging ? 'grabbing' : 'grab',
+        userSelect: 'none'
+    }
+
     return (
         <div
+            ref={containerRef}
             onMouseEnter={resetFadeTimer}
             onMouseMove={resetFadeTimer}
-            onTouchStart={resetFadeTimer}
-            style={{
-                position: 'absolute',
-                // Desktop: Left side, below where portfolio panel ends (approx 380px from top)
-                // Mobile: Bottom sheet above portfolio
-                top: isMobile ? 'auto' : 'calc(var(--safe-area-top, 0px) + 20px)',
-                left: isMobile ? 'calc(var(--safe-area-left, 0px) + 12px)' : 'calc(var(--safe-area-left, 0px) + 350px)',
-                right: isMobile ? 'calc(var(--safe-area-right, 0px) + 12px)' : 'auto',
-                bottom: isMobile ? 'calc(var(--safe-area-bottom, 0px) + 120px)' : 'auto',
-                width: isMobile ? 'auto' : 200,
-                maxWidth: isMobile ? 'none' : 200,
-                background: 'rgba(20, 20, 30, 0.95)',
-                backdropFilter: 'blur(10px)',
-                borderRadius: 12,
-                padding: isExpanded ? '14px' : '10px 14px',
-                border: '1px solid rgba(255,255,255,0.1)',
-                color: 'white',
-                fontFamily: 'Inter, system-ui, sans-serif',
-                fontSize: 13,
-                zIndex: 99,
-                transition: 'all 0.2s ease, opacity 0.5s ease',
-                opacity: isVisible ? 1 : 0,
-                pointerEvents: 'auto',
-            }}
+            onTouchStart={(e) => { resetFadeTimer(); handleDragStart(e); }}
+            onMouseDown={handleDragStart}
+            style={containerStyle}
+            title="Wallets (drag to move)"
         >
             {/* Close button */}
             <button
@@ -253,7 +265,9 @@ export default function WalletConnect() {
                             fontSize: 11,
                             color: '#ff6b6b'
                         }}>
-                            {error}
+                            {error === 'Failed to fetch'
+                                ? 'Network Error: Check wallet RPC or internet connection.'
+                                : error}
                         </div>
                     )}
 

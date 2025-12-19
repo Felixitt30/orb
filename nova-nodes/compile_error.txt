@@ -1,0 +1,59 @@
+﻿node.exe : [1m[31mTypeErro
+r:[39m[22m Function has 
+override specified but does 
+not override anything.
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: ([1m  
+  [31mTypeEr...rride anyt   
+ hing.:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+   --> contracts/core/veNOVA
+.sol:119:43:
+    |
+119 |     function 
+getTotalSupply() public 
+view override returns 
+(uint256) {
+    |                       
+                    ^^^^^^^^
+
+
+[1m[31mTypeError:[39m[22
+m Member 
+"upperLookupUint48" not 
+found or not visible after 
+argument-dependent lookup 
+in struct 
+Checkpoints.Trace208 
+storage ref.
+   --> contracts/core/veNOVA
+.sol:116:16:
+    |
+116 |         return _delega
+teCheckpoints[account].upper
+LookupUint48(uint48(timepoin
+t));
+    |                ^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^
+
+
+[31m[1mError[22m[39m 
+[31m[1mHH600:[22m[39m 
+Compilation failed
+
+For more info go to https://
+v2.hardhat.org/HH600 or run 
+Hardhat with 
+--show-stack-traces

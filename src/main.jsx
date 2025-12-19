@@ -49,13 +49,19 @@ window.addEventListener('error', (event) => {
 })
 
 // Register service worker for offline functionality
-// TEMPORARILY DISABLED FOR DEVELOPMENT - PREVENTS CACHING ISSUES
-/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('SW registered:', registration.scope)
+
+        // Ensure we reload if the controller changes (Update Flow)
+        let refreshing
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (refreshing) return
+          window.location.reload()
+          refreshing = true
+        })
 
         // Check for updates
         registration.addEventListener('updatefound', () => {
@@ -73,11 +79,12 @@ if ('serviceWorker' in navigator) {
       })
   })
 }
-*/
 
 // Conditional audio blocking based on user preference
 function blockAudio() {
-  const soundEnabled = localStorage.getItem('orbSoundEnabled') === 'true'
+  // Default to enabled if not set. Only block if explicitly set to 'false'
+  const soundPreference = localStorage.getItem('orbSoundEnabled')
+  const soundEnabled = soundPreference === null || soundPreference === 'true'
 
   if (!soundEnabled) {
     console.log('🔇 Audio blocking enabled by user preference')

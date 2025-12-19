@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
+import { useDraggable } from '../hooks/useDraggable'
 
 export default function PortfolioUI() {
     const { holdings, updateHoldings, prices, inputDrafts, setInputDrafts, isInputFocused, setInputFocused, settings, fetchData, isLoadingPrices, getTokenPriceData } = useStore()
@@ -7,10 +8,8 @@ export default function PortfolioUI() {
     const [isMobile, setIsMobile] = useState(false)
     const [isExpanded, setIsExpanded] = useState(false)
     const [balanceRevealed, setBalanceRevealed] = useState(false)
-    const [position, setPosition] = useState({ x: null, y: null })
-    const [isDragging, setIsDragging] = useState(false)
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
     const panelRef = useRef(null)
+    const { position, isDragging, handleDragStart, setPosition } = useDraggable(panelRef)
 
     // Visibility state for auto-fade and close
     const [isVisible, setIsVisible] = useState(true)
@@ -195,6 +194,7 @@ export default function PortfolioUI() {
                     top: isMobile ? 'auto' : 'calc(var(--safe-area-top, 0px) + 80px)',
                     bottom: isMobile ? 'calc(var(--safe-area-bottom, 0px) + 70px)' : 'auto',
                     left: 'calc(var(--safe-area-left, 0px) + 12px)',
+                    left: 'calc(var(--safe-area-left, 0px) + 12px)',
                     background: 'rgba(0,0,0,0.6)',
                     border: '1px solid rgba(255,255,255,0.2)',
                     borderRadius: 8,
@@ -202,7 +202,7 @@ export default function PortfolioUI() {
                     color: '#888',
                     fontSize: 11,
                     cursor: 'pointer',
-                    zIndex: 100,
+                    zIndex: 1100,
                     pointerEvents: 'auto',
                     display: 'flex',
                     alignItems: 'center',
@@ -223,7 +223,7 @@ export default function PortfolioUI() {
         fontFamily: 'Inter, sans-serif',
         fontSize: 14,
         border: '1px solid rgba(255,255,255,0.1)',
-        zIndex: 100,
+        zIndex: 1100, // Ensure it is above Settings Button (1000) and OrbInfo (200)
         display: 'flex',
         flexDirection: 'column',
         gap: 12,
@@ -252,10 +252,10 @@ export default function PortfolioUI() {
         left: 'calc(var(--safe-area-left, 0px) + 12px)',
         right: 'calc(var(--safe-area-right, 0px) + 12px)',
         bottom: 'calc(var(--safe-area-bottom, 0px) + 70px)',
-        maxWidth: '100vw', // Never exceed viewport
-        maxHeight: isExpanded ? '45vh' : 'auto',
-        overflowY: isExpanded ? 'auto' : 'hidden', // Scroll when expanded
-        overflowX: 'hidden', // Prevent horizontal scroll
+        maxWidth: '100vw',
+        maxHeight: '60vh', // Limit height to avoid clipping top
+        overflowY: 'auto', // Always allow scrolling on mobile
+        overflowX: 'hidden',
     }
 
     return (
@@ -263,8 +263,15 @@ export default function PortfolioUI() {
             ref={panelRef}
             onMouseEnter={resetFadeTimer}
             onMouseMove={resetFadeTimer}
-            onTouchStart={resetFadeTimer}
-            style={isMobile ? mobileStyles : desktopStyles}
+            onTouchStart={(e) => { resetFadeTimer(); handleDragStart(e); }}
+
+            onMouseDown={handleDragStart}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+                ... (isMobile ? mobileStyles : desktopStyles),
+                cursor: isDragging ? 'grabbing' : 'grab'
+            }}
+            title="Portfolio (drag to move)"
         >
             {/* Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
@@ -404,6 +411,8 @@ export default function PortfolioUI() {
                     value={inputDrafts?.symbol || ''}
                     onChange={(e) => setInputDrafts({ ...inputDrafts, symbol: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onFocus={() => setInputFocused(true)}
                     onBlur={() => setInputFocused(false)}
                     style={{
@@ -422,6 +431,8 @@ export default function PortfolioUI() {
                     value={inputDrafts?.amount || ''}
                     onChange={(e) => setInputDrafts({ ...inputDrafts, amount: e.target.value })}
                     onClick={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onTouchStart={(e) => e.stopPropagation()}
                     onFocus={() => setInputFocused(true)}
                     onBlur={() => setInputFocused(false)}
                     style={{
@@ -441,6 +452,8 @@ export default function PortfolioUI() {
                     e.stopPropagation()
                     handleAddOrUpdate()
                 }}
+                onMouseDown={(e) => e.stopPropagation()}
+                onTouchStart={(e) => e.stopPropagation()}
                 style={{
                     width: '100%',
                     padding: '10px 0',

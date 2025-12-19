@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useDraggable } from '../hooks/useDraggable'
 
 export default function RetroGames() {
     const [isOpen, setIsOpen] = useState(false)
@@ -16,11 +17,9 @@ export default function RetroGames() {
     const fadeTimerRef = useRef(null)
     const FADE_DELAY = 4000
 
-    // Drag state
-    const [isDragging, setIsDragging] = useState(false)
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-    const [position, setPosition] = useState({ x: null, y: null })
+    // Draggable state
     const buttonRef = useRef(null)
+    const { position, isDragging, handleDragStart, setPosition } = useDraggable(buttonRef)
 
     const resetFadeTimer = () => {
         setIsVisible(true)
@@ -33,48 +32,10 @@ export default function RetroGames() {
         return () => { if (fadeTimerRef.current) clearTimeout(fadeTimerRef.current) }
     }, [])
 
-    // Drag handlers
-    const handleDragStart = (e) => {
-        if (isMobile) return
-        e.preventDefault()
-        const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX
-        const clientY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY
-        if (buttonRef.current) {
-            const rect = buttonRef.current.getBoundingClientRect()
-            setDragOffset({ x: clientX - rect.left, y: clientY - rect.top })
-        }
-        setIsDragging(true)
-        resetFadeTimer()
-    }
-
-    const handleDragMove = (e) => {
-        if (!isDragging) return
-        const clientX = e.type === 'touchmove' ? e.touches[0].clientX : e.clientX
-        const clientY = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY
-        setPosition({ x: clientX - dragOffset.x, y: clientY - dragOffset.y })
-        resetFadeTimer()
-    }
-
-    const handleDragEnd = () => setIsDragging(false)
-
-    useEffect(() => {
-        if (isDragging) {
-            window.addEventListener('mousemove', handleDragMove)
-            window.addEventListener('mouseup', handleDragEnd)
-            window.addEventListener('touchmove', handleDragMove)
-            window.addEventListener('touchend', handleDragEnd)
-        }
-        return () => {
-            window.removeEventListener('mousemove', handleDragMove)
-            window.removeEventListener('mouseup', handleDragEnd)
-            window.removeEventListener('touchmove', handleDragMove)
-            window.removeEventListener('touchend', handleDragEnd)
-        }
-    }, [isDragging, dragOffset])
-
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768)
+            const mobile = window.innerWidth < 768
+            setIsMobile(mobile)
             setPosition({ x: null, y: null })
         }
         checkMobile()
@@ -171,7 +132,7 @@ export default function RetroGames() {
 
     const toggleButtonStyle = {
         position: 'fixed',
-        bottom: position.y !== null ? 'auto' : (isMobile ? 'calc(var(--safe-area-bottom, 0px) + 80px)' : '70px'),
+        bottom: position.y !== null ? 'auto' : (isMobile ? 'calc(var(--safe-area-bottom, 0px) + 90px)' : '90px'),
         right: position.x !== null ? 'auto' : '20px',
         left: position.x !== null ? position.x : 'auto',
         top: position.y !== null ? position.y : 'auto',

@@ -17,6 +17,8 @@ import EmptyState from './components/EmptyState'
 import PortfolioPulse from './components/PortfolioPulse'
 import SessionTracker from './components/SessionTracker'
 import RocketBurst from './components/RocketBurst'
+import NovaNodes from './components/NovaNodes'
+import NovaNodesButton from './components/NovaNodesButton'
 import { useStore } from './store'
 
 function OrbModel({ isMobile }) {
@@ -331,9 +333,14 @@ function App() {
 
         {/* Rocket Burst - Celebration animation */}
         <RocketBurst />
+
+        {/* Nova Nodes - DeFi Dashboard */}
+        <NovaNodes />
+        <NovaNodesButton />
       </div>
     </>
   )
 }
 
 export default App
+// Force re-render check

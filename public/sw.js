@@ -1,5 +1,5 @@
 // Orb Service Worker - Enables offline functionality
-const CACHE_NAME = 'orb-cache-v2';
+const CACHE_NAME = 'orb-cache-v3';
 const OFFLINE_URL = '/offline.html';
 
 // Assets to cache immediately on install
