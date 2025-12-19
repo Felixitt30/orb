@@ -1414,20 +1414,36 @@ export const useStore = create((set, get) => ({
 
           console.log("Fetching Nova Nodes for:", userAddress);
           const tokenIds = await nft.getNodesByOwner(userAddress);
-          console.log("Found Nodes:", tokenIds.length);
-
           for (const tokenId of tokenIds) {
             console.log("Processing Token ID:", tokenId.toString());
-            // Destructure the 5 return values correctly
-            const [staked, rarity, yieldMultiplier, createdAt, lastClaim] = await nft.nodes(tokenId);
-            const pending = await distributor.pendingRewards(tokenId);
+
+            let staked, rarity, yieldMultiplier, createdAt, lastClaim;
+            try {
+              // Fetch Node Details
+              console.log(`Calling nft.nodes(${tokenId})...`);
+              const result = await nft.nodes(tokenId);
+              [staked, rarity, yieldMultiplier, createdAt, lastClaim] = result;
+              console.log("Node Data:", result);
+            } catch (nodeErr) {
+              console.error(`Error fetching node data for #${tokenId}:`, nodeErr);
+              continue; // Skip this node if data fetch fails
+            }
+
+            let pending = BigInt(0);
+            try {
+              console.log(`Calling distributor.pendingRewards(${tokenId})...`);
+              pending = await distributor.pendingRewards(tokenId);
+            } catch (rewardErr) {
+              console.warn(`Error fetching rewards for #${tokenId} (defaulting to 0):`, rewardErr.message);
+              // Don't fail the whole node, just rewards
+            }
 
             userNodes.push({
               id: `#${tokenId.toString()}`,
               amount: ethers.formatEther(staked),
-              rarity: ["Common", "Uncommon", "Rare", "Epic", "Legendary"][Number(rarity)], // Added Epic
+              rarity: ["Common", "Uncommon", "Rare", "Epic", "Legendary"][Number(rarity)],
               multiplier: (Number(yieldMultiplier) / 10000).toFixed(1) + "x",
-              color: ["#64748b", "#00ffcc", "#bd00ff", "#ff0055", "#ffaa00"][Number(rarity)], // Added Epic color (orange)
+              color: ["#64748b", "#00ffcc", "#bd00ff", "#ff0055", "#ffaa00"][Number(rarity)],
               tokenId: tokenId.toString()
             });
             pendingRewards += pending;
