@@ -1461,7 +1461,19 @@ export const useStore = create((set, get) => ({
 
     try {
       await provider.send("wallet_switchEthereumChain", [{ chainId: "0x7a69" }]); // 31337 in hex
+      // If successful, the network changed.
+      // Ethers providers often invalidates here. We should stop execution.
+      throw new Error("Network switched to Localhost. Please click the button again to proceed.");
     } catch (switchError) {
+      if (switchError.message && switchError.message.includes("Network switched")) {
+        throw switchError; // Propagate our friendly error
+      }
+
+      // Handle the "network changed" error from Ethers.js
+      if (switchError.message && (switchError.message.includes("network changed") || switchError.code === "NETWORK_ERROR")) {
+        throw new Error("Network switched. Please click the button again.");
+      }
+
       // This error code indicates that the chain has not been added to MetaMask.
       if (switchError.code === 4902 || switchError.code === -32603) {
         try {
