@@ -464,6 +464,17 @@ export const useStore = create((set, get) => ({
   isAuthLoading: false,
   isNovaNodesOpen: false,
 
+  // External Web3 Provider (from WalletConnect)
+  web3Provider: null,
+  setWeb3Provider: (provider, address) => {
+    // Also update connectedWallets to ensure UI reflects connection
+    const currentWallets = get().connectedWallets;
+    set({
+      web3Provider: provider,
+      connectedWallets: { ...currentWallets, metamask: address } // Mapping WalletConnect to 'metamask' slot for now to reuse UI logic
+    });
+  },
+
   // Nova Nodes State
   novaNodes: {
     tvl: 0,
@@ -1340,7 +1351,10 @@ export const useStore = create((set, get) => ({
     let provider;
 
     // Use the same robust provider detection as staking
-    if (connectedWallets.core && window.avalanche) {
+    const { web3Provider } = get();
+    if (web3Provider) {
+      provider = web3Provider;
+    } else if (connectedWallets.core && window.avalanche) {
       provider = new ethers.BrowserProvider(window.avalanche);
     } else if (connectedWallets.metamask && window.ethereum) {
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -1525,7 +1539,10 @@ export const useStore = create((set, get) => ({
     let provider;
 
     // Prioritize the wallet typically used for this chain, or fall back to what's available
-    if (connectedWallets.core && window.avalanche) {
+    const { web3Provider } = get();
+    if (web3Provider) {
+      provider = web3Provider;
+    } else if (connectedWallets.core && window.avalanche) {
       provider = new ethers.BrowserProvider(window.avalanche);
     } else if (connectedWallets.metamask && window.ethereum) {
       provider = new ethers.BrowserProvider(window.ethereum);
@@ -1580,7 +1597,10 @@ export const useStore = create((set, get) => ({
     const { connectedWallets } = get();
     let provider;
 
-    if (connectedWallets.core && window.avalanche) {
+    const { web3Provider } = get();
+    if (web3Provider) {
+      provider = web3Provider;
+    } else if (connectedWallets.core && window.avalanche) {
       provider = new ethers.BrowserProvider(window.avalanche);
     } else if (connectedWallets.metamask && window.ethereum) {
       provider = new ethers.BrowserProvider(window.ethereum);

@@ -20,6 +20,8 @@ import RocketBurst from './components/RocketBurst'
 import NovaNodes from './components/NovaNodes'
 import NovaNodesButton from './components/NovaNodesButton'
 import { useStore } from './store'
+import './lib/web3Config' // 1. Initialize Web3Modal
+import Web3Sync from './components/Web3Sync' // 2. Sync component
 
 function OrbModel({ isMobile }) {
   const mesh = useRef()
@@ -295,6 +297,7 @@ function App() {
   return (
     <>
       <div style={{ width: '100%', height: 'var(--app-height, 100vh)', minHeight: 'var(--app-height, 100vh)', position: 'relative', background: backgroundColor, overflow: 'auto', WebkitOverflowScrolling: 'touch', transition: 'background 0.3s ease' }}>
+        <Web3Sync />
         {isATH && <Confetti recycle={false} numberOfPieces={500} gravity={0.2} />}
 
         <Canvas camera={{ position: cameraPosition, fov: 45 }}>

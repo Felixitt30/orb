@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import { useStore } from '../store'
 import { useDraggable } from '../hooks/useDraggable'
 
+import { useWeb3Modal } from '@web3modal/ethers/react'
+
 export default function WalletConnect() {
+    const { open } = useWeb3Modal()
     const {
         connectedWallets,
         connectMetaMask,
@@ -60,6 +63,11 @@ export default function WalletConnect() {
     }, [])
 
     const handleConnectMetaMask = async () => {
+        if (isMobile || !window.ethereum) {
+            await open()
+            return
+        }
+
         setIsConnecting('metamask')
         setError(null)
         try {
