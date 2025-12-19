@@ -1376,7 +1376,8 @@ export const useStore = create((set, get) => ({
       // Fetch Global Data
       const [tvl, totalNodes] = await Promise.race([
         Promise.all([
-          vault.totalStaked(),
+          // vault.totalStaked() does not exist on contract, temporary bypass
+          Promise.resolve(ethers.parseEther("0")),
           nft.totalSupply()
         ]),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout fetching global data')), 5000))
