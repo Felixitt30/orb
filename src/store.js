@@ -867,6 +867,9 @@ export const useStore = create((set, get) => ({
       })
 
     } catch (err) {
+      if (err.message && (err.message.includes('this[#') || err.message.includes('Internal JSON-RPC'))) {
+        throw new Error('Wallet connection glitch. Please REFRESH the page and try again.');
+      }
       if (err.code === 4001) {
         throw new Error('Connection rejected. Please approve the connection in MetaMask.')
       }
