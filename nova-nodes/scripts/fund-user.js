@@ -16,8 +16,8 @@ async function main() {
     console.log("✅ Sent 100 ETH (Gas) to user");
 
     // 2. Mint Mock Token (sAVAX)
-    // We know the address from previous context: 0x5FbDB2315678afecb367f032d93F642f64180aa3
-    const mockTokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+    // We know the address from deployments/localhost.json
+    const mockTokenAddress = "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E";
     const MockLST = await hre.ethers.getContractFactory("MockLST");
     const mockToken = MockLST.attach(mockTokenAddress);
 

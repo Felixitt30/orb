@@ -1,14 +1,13 @@
 export const NOVA_ADDRESSES = {
-    NovaToken: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    LiquidRestakingToken: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
-    NodeNFT: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
-    StakingVault: "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
-    AllocationManager: "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
-    RewardDistributor: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-    veNOVA: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-    UnderlyingAsset: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+    NovaToken: "0xc3e53F4d16Ae77Db1c982e75a937B9f60FE63690",
+    LiquidRestakingToken: "0x84eA74d481Ee0A5332c457a4d796187F6Ba67fEB",
+    NodeNFT: "0x9E545E3C0baAB3E08CdfD552C960A1050f373042",
+    StakingVault: "0xa82fF9aFd8f496c3d6ac40E2a0F282E47488CFc9",
+    AllocationManager: "0x1613beB3B2C4f22Ee086B2b38C1476A3cE7f78E8",
+    RewardDistributor: "0x851356ae760d987E095750cCeb3bC6014560891C",
+    veNOVA: "0xf5059a5D33d5853360D16C683c16e67980206f36",
+    UnderlyingAsset: "0xE6E340D132b5f46d1e472DebcD681B2aBc16e57E"
 };
-
 export const NOVA_ABIS = {
     StakingVault: [
         "function stake(address lst, uint256 amount) external",
