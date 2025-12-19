@@ -21,7 +21,7 @@ export const NOVA_ABIS = {
     NodeNFT: [
         "function balanceOf(address owner) external view returns (uint256)",
         "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)",
-        "function nodes(uint256 tokenId) external view returns (uint256 stakedAmount, uint256 rarity, uint256 lastClaimTime)",
+        "function nodes(uint256 tokenId) external view returns (uint256 stakedAmount, uint8 rarity, uint16 yieldMultiplier, uint64 createdAt, uint64 lastClaimTime)",
         "function mergeNodes(uint256 tokenId1, uint256 tokenId2) external",
         "function totalSupply() external view returns (uint256)"
     ],

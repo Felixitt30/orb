@@ -1421,15 +1421,16 @@ export const useStore = create((set, get) => ({
           const balance = await nft.balanceOf(userAddress);
           for (let i = 0; i < Number(balance); i++) {
             const tokenId = await nft.tokenOfOwnerByIndex(userAddress, i);
-            const [staked, rarity, lastClaim] = await nft.nodes(tokenId);
+            // Destructure the 5 return values correctly
+            const [staked, rarity, yieldMultiplier, createdAt, lastClaim] = await nft.nodes(tokenId);
             const pending = await distributor.pendingRewards(tokenId);
 
             userNodes.push({
               id: `#${tokenId.toString()}`,
               amount: ethers.formatEther(staked),
-              rarity: ["Common", "Uncommon", "Rare", "Legendary"][Number(rarity)],
-              multiplier: ["1.0x", "1.5x", "2.5x", "4.0x"][Number(rarity)],
-              color: ["#64748b", "#00ffcc", "#bd00ff", "#ff0055"][Number(rarity)],
+              rarity: ["Common", "Uncommon", "Rare", "Epic", "Legendary"][Number(rarity)], // Added Epic
+              multiplier: (Number(yieldMultiplier) / 10000).toFixed(1) + "x",
+              color: ["#64748b", "#00ffcc", "#bd00ff", "#ff0055", "#ffaa00"][Number(rarity)], // Added Epic color (orange)
               tokenId: tokenId.toString()
             });
             pendingRewards += pending;
