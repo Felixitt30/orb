@@ -1385,21 +1385,15 @@ export const useStore = create((set, get) => ({
       // Determine User Address
       let userAddress = connectedWallets.metamask || connectedWallets.core;
 
-      // If no address in store, try to fetch from provider (Auto-detect after refresh)
-      if (!userAddress && provider.listAccounts) {
+      // Force refresh address from provider to ensure sync with MetaMask
+      if (provider.listAccounts) {
         try {
           const accounts = await provider.listAccounts();
           if (accounts.length > 0) {
-            // Ethers v6: accounts[0] is a Signer. Need to get address properly.
-            userAddress = await accounts[0].getAddress();
-
-            // SYNC BACK TO STORE so the UI knows we are connected!
-            const currentWallets = get().connectedWallets;
-            // Ideally detect which wallet type, but for now duplicate to ensure it works
-            if (window.avalanche) {
-              set({ connectedWallets: { ...currentWallets, core: userAddress } });
-            } else {
-              set({ connectedWallets: { ...currentWallets, metamask: userAddress } });
+            const freshAddress = await accounts[0].getAddress();
+            if (freshAddress !== userAddress) {
+              console.log(`Address mismatch! Updating: ${userAddress} -> ${freshAddress}`);
+              userAddress = freshAddress;
             }
           }
         } catch (e) {
@@ -1423,6 +1417,7 @@ export const useStore = create((set, get) => ({
           console.log("Found Nodes:", tokenIds.length);
 
           for (const tokenId of tokenIds) {
+            console.log("Processing Token ID:", tokenId.toString());
             // Destructure the 5 return values correctly
             const [staked, rarity, yieldMultiplier, createdAt, lastClaim] = await nft.nodes(tokenId);
             const pending = await distributor.pendingRewards(tokenId);
