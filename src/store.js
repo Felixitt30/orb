@@ -1418,9 +1418,11 @@ export const useStore = create((set, get) => ({
           const assetContract = new ethers.Contract(NOVA_ADDRESSES.UnderlyingAsset, NOVA_ABIS.ERC20, provider);
           userAssetBalance = await assetContract.balanceOf(userAddress);
 
-          const balance = await nft.balanceOf(userAddress);
-          for (let i = 0; i < Number(balance); i++) {
-            const tokenId = await nft.tokenOfOwnerByIndex(userAddress, i);
+          console.log("Fetching Nova Nodes for:", userAddress);
+          const tokenIds = await nft.getNodesByOwner(userAddress);
+          console.log("Found Nodes:", tokenIds.length);
+
+          for (const tokenId of tokenIds) {
             // Destructure the 5 return values correctly
             const [staked, rarity, yieldMultiplier, createdAt, lastClaim] = await nft.nodes(tokenId);
             const pending = await distributor.pendingRewards(tokenId);
